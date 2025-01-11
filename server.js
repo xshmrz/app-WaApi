@@ -1,4 +1,4 @@
-// Gerekli paketleri yükleme
+// Load required packages
 const express             = require('express');
 const qrcode              = require('qrcode');
 const {Client, LocalAuth} = require('whatsapp-web.js');
@@ -8,31 +8,26 @@ const net                 = require('net');
 const {execSync}          = require('child_process');
 const app                 = express();
 const port                = 3000;
-// Port kontrolü ve serbest bırakma fonksiyonu
+// Function to check port availability and release if in use
 async function ensurePortAvailable(port) {
     return new Promise((resolve, reject) => {
         const server = net.createServer();
         server.once('error', (err) => {
             if (err.code === 'EADDRINUSE') {
-                console.warn(`Port ${port} is in use. Attempting to free it...`);
                 try {
                     const platform = process.platform;
                     if (platform === 'win32') {
-                        // Windows için işlem sonlandırma
                         const output = execSync(`netstat -ano | findstr :${port}`).toString();
                         const pid    = output.trim().split(/\s+/).pop();
                         execSync(`taskkill /PID ${pid} /F`);
                     }
                     else {
-                        // Unix tabanlı sistemler için işlem sonlandırma
                         const pid = execSync(`lsof -t -i:${port}`).toString().trim();
                         execSync(`kill -9 ${pid}`);
                     }
-                    console.log(`Port ${port} has been freed.`);
                     resolve();
                 }
                 catch (killErr) {
-                    console.error(`Failed to free port ${port}:`, killErr.message);
                     reject(killErr);
                 }
             }
@@ -46,7 +41,7 @@ async function ensurePortAvailable(port) {
         server.listen(port);
     });
 }
-// WhatsApp istemcisini başlat
+// Initialize the WhatsApp client
 const client          = new Client({
                                        authStrategy: new LocalAuth()
                                    });
@@ -55,24 +50,24 @@ let isAuthenticated   = false;
 let isReady           = false;
 let isQrCodeAvailable = false;
 let clientInfo        = null;
+// Event listener for receiving QR code
 client.on('qr', (qr) => {
     qrCode            = qr;
     isQrCodeAvailable = true;
-    console.log('QR Code received. Scan it with your WhatsApp.');
 });
+// Event listener for when the client is ready
 client.on('ready', () => {
-    console.log('WhatsApp client is ready.');
-    qrCode            = null; // QR kodu temizle
+    qrCode            = null; // Clear QR code
     isReady           = true;
     isQrCodeAvailable = false;
-    clientInfo        = client.info; // Client bilgilerini kaydet
+    clientInfo        = client.info; // Save client information
 });
+// Event listener for successful authentication
 client.on('authenticated', () => {
-    console.log('WhatsApp client is authenticated.');
     isAuthenticated = true;
 });
+// Event listener for client disconnection
 client.on('disconnected', (reason) => {
-    console.log('WhatsApp client was logged out:', reason);
     qrCode            = null;
     isAuthenticated   = false;
     isReady           = false;
@@ -82,7 +77,7 @@ client.on('disconnected', (reason) => {
     client.initialize();
 });
 client.initialize();
-// QR kod oluşturma endpointi
+// Endpoint to generate QR code
 app.get('/create/qr', async (req, res) => {
     try {
         while (!isQrCodeAvailable && !isReady) {
@@ -107,7 +102,7 @@ app.get('/create/qr', async (req, res) => {
         return res.status(500).send({error: 'Failed to generate QR code.', details: err.message});
     }
 });
-// Mesaj gönderme endpointi
+// Endpoint to send a message
 app.get('/send/message', async (req, res) => {
     try {
         const {to, message} = req.query;
@@ -126,7 +121,22 @@ app.get('/send/message', async (req, res) => {
         return res.status(500).send({error: 'Failed to send message', details: err.message});
     }
 });
-// Durum kontrol endpointi
+// Endpoint to send a message to a group
+app.get('/send/group-message', async (req, res) => {
+    try {
+        const {groupId, message} = req.query;
+        if (!groupId || !message) {
+            return res.status(400).send({error: 'Group ID (groupId) and message are required'});
+        }
+        const groupChatId = `${groupId}@g.us`;
+        await client.sendMessage(groupChatId, message);
+        return res.send({message: 'Message sent to group successfully.'});
+    }
+    catch (err) {
+        return res.status(500).send({error: 'Failed to send message to group', details: err.message});
+    }
+});
+// Endpoint to check client status
 app.get('/status', async (req, res) => {
     try {
         return res.send({
@@ -139,7 +149,7 @@ app.get('/status', async (req, res) => {
         return res.status(500).send({error: 'Failed to retrieve status.', details: err.message});
     }
 });
-// Sunucuyu başlat
+// Start the server
 ensurePortAvailable(port)
     .then(() => {
         app.listen(port, () => {
