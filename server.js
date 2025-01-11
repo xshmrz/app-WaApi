@@ -103,9 +103,9 @@ app.get('/create/qr', async (req, res) => {
     }
 });
 // Endpoint to send a message
-app.get('/send/message', async (req, res) => {
+app.post('/send/message', async (req, res) => {
     try {
-        const {to, message} = req.query;
+        const {to, message} = req.body;
         if (!to || !message) {
             return res.status(400).send({error: 'Recipient (to) and message are required'});
         }
@@ -122,9 +122,9 @@ app.get('/send/message', async (req, res) => {
     }
 });
 // Endpoint to send a message to a group
-app.get('/send/group-message', async (req, res) => {
+app.post('/send/group-message', async (req, res) => {
     try {
-        const {groupId, message} = req.query;
+        const {groupId, message} = req.body;
         if (!groupId || !message) {
             return res.status(400).send({error: 'Group ID (groupId) and message are required'});
         }

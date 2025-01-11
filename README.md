@@ -43,7 +43,7 @@ client status. The server ensures the assigned port is available, freeing it if 
 
 ### 2. Send Message
 
-**GET** `/send/message`
+**POST** `/send/message`
 
 - Sends a message to a specified phone number.
 - Query Parameters:
@@ -55,7 +55,7 @@ client status. The server ensures the assigned port is available, freeing it if 
 
 ### 3. Send Group Message
 
-**GET** `/send/group-message`
+**POST** `/send/group-message`
 
 - Sends a message to a specified WhatsApp group.
 - Query Parameters:
