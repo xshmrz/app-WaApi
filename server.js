@@ -1,14 +1,15 @@
-// Load required packages
+// Required Packages
 const express             = require('express');
 const qrcode              = require('qrcode');
 const {Client, LocalAuth} = require('whatsapp-web.js');
-const fs                  = require('fs');
-const path                = require('path');
 const net                 = require('net');
 const {execSync}          = require('child_process');
 const app                 = express();
 const port                = 3000;
-// Function to check port availability and release if in use
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({extended: true}));
+// Function to Ensure Port Availability
 async function ensurePortAvailable(port) {
     return new Promise((resolve, reject) => {
         const server = net.createServer();
@@ -41,139 +42,138 @@ async function ensurePortAvailable(port) {
         server.listen(port);
     });
 }
-// Initialize the WhatsApp client
-const client          = new Client({
-                                       authStrategy: new LocalAuth(),
-                                       puppeteer   : {
-                                           headless: true, // Set to false if you want to debug visually
-                                           args    : [
-                                               '--no-sandbox',
-                                               '--disable-setuid-sandbox',
-                                               '--disable-dev-shm-usage',
-                                               '--disable-accelerated-2d-canvas',
-                                               '--no-first-run',
-                                               '--no-zygote',
-                                               '--single-process', // Recommended for some environments
-                                               '--disable-gpu'
-                                           ]
-                                       }
-                                   });
-let qrCode            = null;
-let isAuthenticated   = false;
-let isReady           = false;
-let isQrCodeAvailable = false;
-let clientInfo        = null;
-// Middleware to parse JSON request bodies
-app.use(express.json());
-// Middleware to parse URL-encoded bodies
-app.use(express.urlencoded({extended: true}));
-// Event listener for receiving QR code
+// WhatsApp Client Configuration
+const client        = new Client({
+                                     authStrategy: new LocalAuth(),
+                                     puppeteer   : {
+                                         headless: true,
+                                         args    : [
+                                             '--no-sandbox', // Disable sandboxing for environments like Docker
+                                             '--disable-setuid-sandbox',
+                                             '--disable-dev-shm-usage', // Reduce shared memory usage
+                                             '--disable-accelerated-2d-canvas',
+                                             '--disable-gpu', // Disable GPU acceleration
+                                             '--no-first-run',
+                                             '--no-zygote',
+                                             '--single-process' // Run as a single process
+                                         ]
+                                     }
+                                 });
+let qrCode          = null;
+let clientInfo      = null;
+let isAuthenticated = false;
+let isReady         = false;
+// Event Listeners
 client.on('qr', (qr) => {
-    qrCode            = qr;
-    isQrCodeAvailable = true;
+    qrCode = qr;
+    console.log('QR Code received. Scan it with your WhatsApp.');
 });
-// Event listener for when the client is ready
 client.on('ready', () => {
-    qrCode            = null; // Clear QR code
-    isReady           = true;
-    isQrCodeAvailable = false;
-    clientInfo        = client.info; // Save client information
+    isReady    = true;
+    qrCode     = null;
+    clientInfo = client.info;
+    console.log('WhatsApp client is ready.');
 });
-// Event listener for successful authentication
 client.on('authenticated', () => {
     isAuthenticated = true;
+    console.log('WhatsApp client authenticated.');
 });
-// Event listener for client disconnection
 client.on('disconnected', (reason) => {
-    qrCode            = null;
-    isAuthenticated   = false;
-    isReady           = false;
-    isQrCodeAvailable = false;
-    clientInfo        = null;
-    client.destroy();
-    client.initialize();
+    console.error('Client disconnected:', reason);
+    isAuthenticated = false;
+    isReady         = false;
+    client.destroy().then(() => {
+        console.log('Restarting client...');
+        client.initialize();
+    });
+});
+client.on('error', (err) => {
+    console.error('Client encountered an error:', err);
+    client.destroy().then(() => {
+        console.log('Reinitializing client after error...');
+        client.initialize();
+    });
+});
+client.on('auth_failure', (msg) => {
+    console.error('Authentication failure:', msg);
 });
 client.initialize();
-// Endpoint to generate QR code
+// Routes
+// Generate QR Code
 app.get('/create/qr', async (req, res) => {
     try {
-        while (!isQrCodeAvailable && !isReady) {
-            await new Promise((resolve) => setTimeout(resolve, 500));
-        }
-        if (isQrCodeAvailable) {
+        if (qrCode) {
             const qrImage = await qrcode.toDataURL(qrCode);
-            return res.send(`<img src="${qrImage}" alt="QR Code" />`);
+            res.send(`<img src="${qrImage}" alt="QR Code" />`);
         }
         else if (isReady) {
-            return res.send({
-                                message   : 'Client is already ready. No QR code available.',
-                                clientInfo: {
-                                    pushname: clientInfo.pushname,
-                                    wid     : clientInfo.wid._serialized,
-                                    platform: clientInfo.platform
-                                }
-                            });
+            res.json({
+                         message   : 'Client is ready.',
+                         clientInfo: {
+                             pushname: clientInfo.pushname,
+                             wid     : clientInfo.wid._serialized,
+                             platform: clientInfo.platform
+                         }
+                     });
+        }
+        else {
+            res.status(400).json({message: 'QR Code not available yet.'});
         }
     }
     catch (err) {
-        return res.status(500).send({error: 'Failed to generate QR code.', details: err.message});
+        res.status(500).json({error: 'Failed to generate QR code.', details: err.message});
     }
 });
-// Endpoint to send a message
+// Send Message
 app.post('/send/message', async (req, res) => {
+    const {to, message} = req.body;
+    if (!to || !message) {
+        return res.status(400).json({error: 'Recipient (to) and message are required.'});
+    }
     try {
-        const {to, message} = req.body;
-        if (!to || !message) {
-            return res.status(400).send({error: 'Recipient (to) and message are required'});
-        }
-        const phoneRegex = /^[1-9][0-9]{10,14}$/;
-        if (!phoneRegex.test(to)) {
-            return res.status(400).send({error: 'Invalid phone number format. Use international format without "+" (e.g., 905xxxxxxxxx).'});
-        }
         const chatId = `${to}@c.us`;
         await client.sendMessage(chatId, message);
-        return res.send({message: 'Message sent successfully.'});
+        res.json({message: 'Message sent successfully.'});
     }
     catch (err) {
-        return res.status(500).send({error: 'Failed to send message', details: err.message});
+        res.status(500).json({error: 'Failed to send message.', details: err.message});
     }
 });
-// Endpoint to send a message to a group
+// Send Group Message
 app.post('/send/group-message', async (req, res) => {
+    const {groupId, message} = req.body;
+    if (!groupId || !message) {
+        return res.status(400).json({error: 'Group ID and message are required.'});
+    }
     try {
-        const {groupId, message} = req.body;
-        if (!groupId || !message) {
-            return res.status(400).send({error: 'Group ID (groupId) and message are required'});
-        }
         const groupChatId = `${groupId}@g.us`;
         await client.sendMessage(groupChatId, message);
-        return res.send({message: 'Message sent to group successfully.'});
+        res.json({message: 'Message sent to group successfully.'});
     }
     catch (err) {
-        return res.status(500).send({error: 'Failed to send message to group', details: err.message});
+        res.status(500).json({error: 'Failed to send group message.', details: err.message});
     }
 });
-// Endpoint to check client status
-app.get('/status', async (req, res) => {
-    try {
-        return res.send({
-                            isAuthenticated,
-                            isReady,
-                            message: isReady ? 'Client is ready.' : (isAuthenticated ? 'Client is authenticated but not ready.' : 'Client is not authenticated.')
-                        });
-    }
-    catch (err) {
-        return res.status(500).send({error: 'Failed to retrieve status.', details: err.message});
-    }
+// Client Status
+app.get('/status', (req, res) => {
+    res.json({
+                 isAuthenticated,
+                 isReady,
+                 message: isReady
+                          ? 'Client is ready.'
+                          : isAuthenticated
+                            ? 'Client is authenticated but not ready.'
+                            : 'Client is not authenticated.'
+             });
 });
-// Start the server
+// Start Server
 ensurePortAvailable(port)
     .then(() => {
         app.listen(port, () => {
-            console.log(`Server is running on http://localhost:${port}`);
+            console.log(`Server running at http://localhost:${port}`);
         });
     })
     .catch((err) => {
-        console.error(err.message);
+        console.error('Error ensuring port availability:', err.message);
         process.exit(1);
     });
