@@ -1,7 +1,7 @@
 {
-    "name"           : "whatsapp-api-server",
+    "name"           : "whatsapp-web-api-server",
     "version"        : "1.0.0",
-    "description"    : "WhatsApp Web API ile mesaj gönderme ve QR kod oluşturma",
+    "description"    : "An Express.js server integrated with whatsapp-web.js for interacting with WhatsApp Web.",
     "main"           : "server.js",
     "scripts"        : {
         "start": "node server.js",
@@ -9,12 +9,22 @@
     },
     "dependencies"   : {
         "express"        : "^4.18.2",
-        "qrcode"         : "^1.5.1",
-        "whatsapp-web.js": "^1.19.4"
+        "qrcode"         : "^1.5.0",
+        "whatsapp-web.js": "^1.26.0"
     },
     "devDependencies": {
-        "nodemon": "^3.0.1"
+        "nodemon": "^2.0.22"
     },
-    "author"         : "",
+    "engines"        : {
+        "node": ">=14.0.0"
+    },
+    "keywords"       : [
+        "whatsapp",
+        "whatsapp-web",
+        "express",
+        "api",
+        "qrcode"
+    ],
+    "author"         : "Xshmrz",
     "license"        : "MIT"
 }
