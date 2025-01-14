@@ -1,0 +1,6 @@
+.idea
+.wwebjs_auth
+node_modules
+package-lock.json
+.gitignore
+tsconfig.json
