@@ -1,6 +1,7 @@
 .idea
 .wwebjs_auth
-node_modules
-package-lock.json
 .gitignore
+node_modules
+wa_credentials
+package-lock.json
 tsconfig.json
