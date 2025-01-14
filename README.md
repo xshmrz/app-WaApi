@@ -120,18 +120,20 @@ http://localhost:5001/message/send-text?session=mysession&to=90XXXXXXXXXX&text=H
 ### Using Axios
 
 ```js
-// send text
+// Send Text
+
 axios.post("http://localhost:5001/message/send-text", {
-  session: "mysession",
-  to: "62812345678",
-  text: "hello world",
+  session: "MySession",
+  to: "90XXXXXXXXXX",
+  text: "Hello World",
 });
 
-// send image
+// Send Image
+
 axios.post("http://localhost:5001/message/send-image", {
-  session: "mysession",
-  to: "62812345678",
-  text: "hello world",
+  session: "MySession",
+  to: "90XXXXXXXXXX",
+  text: "Hello World",
   image_url: "https://placehold.co/600x400",
 });
 ```
