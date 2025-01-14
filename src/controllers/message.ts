@@ -8,62 +8,62 @@ import {HTTPException}       from "hono/http-exception";
 export const createMessageController = () => {
 	const app = new Hono();
 
+	// Schema for validating message payload
 	const sendMessageSchema = z.object({
-		session: z.string(),
-		to     : z.string(),
-		text   : z.string(),
+		sessionId  : z.string(),
+		recipient  : z.string(),
+		messageText: z.string(),
 	});
 
+	// Route to send a text message (POST method)
 	app.post(
 		"/send-text",
-		createKeyMiddleware(),
-		customValidator("json", sendMessageSchema),
-		async (c) => {
-			const payload = c.req.valid("json");
-			const isExist = whatsapp.getSession(payload.session);
-			if (!isExist) {
+		createKeyMiddleware(), // Middleware for key validation
+		customValidator("json", sendMessageSchema), // Middleware for schema validation
+		async (context) => {
+			const payload       = context.req.valid("json"); // Extract validated payload
+			const sessionExists = whatsapp.getSession(payload.sessionId); // Check if the session exists
+			if (!sessionExists) {
 				throw new HTTPException(400, {
 					message: "Session does not exist",
 				});
 			}
 
 			const response = await whatsapp.sendTextMessage({
-				sessionId: payload.session,
-				to       : payload.to,
-				text     : payload.text,
+				sessionId: payload.sessionId,
+				to       : payload.recipient,
+				text     : payload.messageText,
 			});
 
-			return c.json({
-				data: response,
-			});
+			return context.json({data: response}); // Return the response as JSON
 		}
 	);
 
+	// Route to send a text message (GET method)
 	app.get(
 		"/send-text",
 		createKeyMiddleware(),
 		customValidator("query", sendMessageSchema),
-		async (c) => {
-			const payload = c.req.valid("query");
-			const isExist = whatsapp.getSession(payload.session);
-			if (!isExist) {
+		async (context) => {
+			const payload       = context.req.valid("query");
+			const sessionExists = whatsapp.getSession(payload.sessionId);
+			if (!sessionExists) {
 				throw new HTTPException(400, {
 					message: "Session does not exist",
 				});
 			}
 
 			const response = await whatsapp.sendTextMessage({
-				sessionId: payload.session,
-				to       : payload.to,
-				text     : payload.text,
+				sessionId: payload.sessionId,
+				to       : payload.recipient,
+				text     : payload.messageText,
 			});
 
-			return c.json({
-				data: response,
-			});
+			return context.json({data: response});
 		}
 	);
 
+	// Route to send an image message
 	app.post(
 		"/send-image",
 		createKeyMiddleware(),
@@ -71,31 +71,31 @@ export const createMessageController = () => {
 			"json",
 			sendMessageSchema.merge(
 				z.object({
-					image_url: z.string(),
+					imageUrl: z.string(), // Additional field for image URL
 				})
 			)
 		),
-		async (c) => {
-			const payload = c.req.valid("json");
-			const isExist = whatsapp.getSession(payload.session);
-			if (!isExist) {
+		async (context) => {
+			const payload       = context.req.valid("json");
+			const sessionExists = whatsapp.getSession(payload.sessionId);
+			if (!sessionExists) {
 				throw new HTTPException(400, {
 					message: "Session does not exist",
 				});
 			}
 
 			const response = await whatsapp.sendImage({
-				sessionId: payload.session,
-				to       : payload.to,
-				text     : payload.text,
-				media    : payload.image_url,
+				sessionId: payload.sessionId,
+				to       : payload.recipient,
+				text     : payload.messageText,
+				media    : payload.imageUrl,
 			});
 
-			return c.json({
-				data: response,
-			});
+			return context.json({data: response});
 		}
 	);
+
+	// Route to send a document
 	app.post(
 		"/send-document",
 		createKeyMiddleware(),
@@ -103,31 +103,29 @@ export const createMessageController = () => {
 			"json",
 			sendMessageSchema.merge(
 				z.object({
-					document_url : z.string(),
-					document_name: z.string(),
+					documentUrl : z.string(), // Field for document URL
+					documentName: z.string(), // Field for document name
 				})
 			)
 		),
-		async (c) => {
-			const payload = c.req.valid("json");
-			const isExist = whatsapp.getSession(payload.session);
-			if (!isExist) {
+		async (context) => {
+			const payload       = context.req.valid("json");
+			const sessionExists = whatsapp.getSession(payload.sessionId);
+			if (!sessionExists) {
 				throw new HTTPException(400, {
 					message: "Session does not exist",
 				});
 			}
 
 			const response = await whatsapp.sendDocument({
-				sessionId: payload.session,
-				to       : payload.to,
-				text     : payload.text,
-				media    : payload.document_url,
-				filename : payload.document_name,
+				sessionId: payload.sessionId,
+				to       : payload.recipient,
+				text     : payload.messageText,
+				media    : payload.documentUrl,
+				filename : payload.documentName,
 			});
 
-			return c.json({
-				data: response,
-			});
+			return context.json({data: response});
 		}
 	);
 

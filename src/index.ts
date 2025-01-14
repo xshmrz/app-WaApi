@@ -23,11 +23,12 @@ app.onError(globalErrorMiddleware);
 app.notFound(notFoundMiddleware);
 
 /**
- * session routes
+ * Session Routes
  */
 app.route("/session", createSessionController());
+
 /**
- * message routes
+ * Message Routes
  */
 app.route("/message", createMessageController());
 

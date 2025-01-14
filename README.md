@@ -37,15 +37,14 @@ Easy Setup Headless Multi Session Whatsapp Gateway With NodeJs
 ### 5. Open On Browser & Start Scan QR
 
 ```
-http://localhost:5001/session/start?session=mysession
+http://localhost:5001/session/start?session=MySession
 ```
 
 ### 6. Sending First Message
 
 ```
-http://localhost:5001/message/send-text?session=mysession&to=90XXXXXXXXXX&text=Hello
+http://localhost:5001/message/send-text?session=MySession&to=90XXXXXXXXXX&text=Hello
 ```
-
 
 ### Using Axios
 

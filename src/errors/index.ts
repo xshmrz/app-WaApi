@@ -7,15 +7,10 @@ export class ApplicationError extends Error {
 		this.name = "ApplicationError";
 	}
 
-	getResponseMessage = () => {
-		return {
-			message: this.message,
-		};
-	};
+	getResponseMessage = () => ({
+		message: this.message,
+	});
 
-	static isApplicationError = (error: any): error is ApplicationError => {
-		return (
-			error instanceof ApplicationError || error.baseName === "ApplicationError"
-		);
-	};
+	static isApplicationError = (error: any): error is ApplicationError =>
+		error instanceof ApplicationError || error.baseName === "ApplicationError";
 }

@@ -54,7 +54,7 @@ export const customValidator = <
 	schema: T,
 	hook?: Hook<z.infer<T>, E, P>
 ): MiddlewareHandler<E, P, V> =>
-	//   @ts-expect-error not typed well
+	// @ts-expect-error not typed well
 	validator(target, async (value, c) => {
 		const result = await schema.safeParseAsync(value);
 

@@ -8,6 +8,6 @@ export const env = z
 	PORT    : z
 	.string()
 	.default("5001")
-	.transform((e) => Number(e)),
+	.transform((port) => Number(port)),
 })
 .parse(process.env);
