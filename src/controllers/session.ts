@@ -1,89 +1,89 @@
-import * as whatsapp from "wa-multi-session";
-import { Hono } from "hono";
-import { customValidator } from "../middlewares/validation.middleware";
-import { z } from "zod";
-import { createKeyMiddleware } from "../middlewares/key.middleware";
-import { toDataURL } from "qrcode";
-import { HTTPException } from "hono/http-exception";
+import * as whatsapp         from "wa-multi-session";
+import {Hono}                from "hono";
+import {customValidator}     from "../middlewares/validation.middleware";
+import {z}                   from "zod";
+import {createKeyMiddleware} from "../middlewares/key.middleware";
+import {toDataURL}           from "qrcode";
+import {HTTPException}       from "hono/http-exception";
 
 export const createSessionController = () => {
-  const app = new Hono();
+	const app = new Hono();
 
-  app.get("/", createKeyMiddleware(), async (c) => {
-    return c.json({
-      data: whatsapp.getAllSession(),
-    });
-  });
+	app.get("/", createKeyMiddleware(), async (c) => {
+		return c.json({
+			data: whatsapp.getAllSession(),
+		});
+	});
 
-  const startSessionSchema = z.object({
-    session: z.string(),
-  });
+	const startSessionSchema = z.object({
+		session: z.string(),
+	});
 
-  app.post(
-    "/start",
-    createKeyMiddleware(),
-    customValidator("json", startSessionSchema),
-    async (c) => {
-      const payload = c.req.valid("json");
+	app.post(
+		"/start",
+		createKeyMiddleware(),
+		customValidator("json", startSessionSchema),
+		async (c) => {
+			const payload = c.req.valid("json");
 
-      const isExist = whatsapp.getSession(payload.session);
-      if (isExist) {
-        throw new HTTPException(400, {
-          message: "Session already exist",
-        });
-      }
+			const isExist = whatsapp.getSession(payload.session);
+			if (isExist) {
+				throw new HTTPException(400, {
+					message: "Session already exist",
+				});
+			}
 
-      const qr = await new Promise<string | null>(async (r) => {
-        await whatsapp.startSession(payload.session, {
-          onConnected() {
-            r(null);
-          },
-          onQRUpdated(qr) {
-            r(qr);
-          },
-        });
-      });
+			const qr = await new Promise<string | null>(async (r) => {
+				await whatsapp.startSession(payload.session, {
+					onConnected() {
+						r(null);
+					},
+					onQRUpdated(qr) {
+						r(qr);
+					},
+				});
+			});
 
-      if (qr) {
-        return c.json({
-          qr: qr,
-        });
-      }
+			if (qr) {
+				return c.json({
+					qr: qr,
+				});
+			}
 
-      return c.json({
-        data: {
-          message: "Connected",
-        },
-      });
-    }
-  );
-  app.get(
-    "/start",
-    createKeyMiddleware(),
-    customValidator("query", startSessionSchema),
-    async (c) => {
-      const payload = c.req.valid("query");
+			return c.json({
+				data: {
+					message: "Connected",
+				},
+			});
+		}
+	);
+	app.get(
+		"/start",
+		createKeyMiddleware(),
+		customValidator("query", startSessionSchema),
+		async (c) => {
+			const payload = c.req.valid("query");
 
-      const isExist = whatsapp.getSession(payload.session);
-      if (isExist) {
-        throw new HTTPException(400, {
-          message: "Session already exist",
-        });
-      }
+			const isExist = whatsapp.getSession(payload.session);
+			if (isExist) {
+				throw new HTTPException(400, {
+					message: "Session already exist",
+				});
+			}
 
-      const qr = await new Promise<string | null>(async (r) => {
-        await whatsapp.startSession(payload.session, {
-          onConnected() {
-            r(null);
-          },
-          onQRUpdated(qr) {
-            r(qr);
-          },
-        });
-      });
+			const qr = await new Promise<string | null>(async (r) => {
+				await whatsapp.startSession(payload.session, {
+					onConnected() {
+						r(null);
+					},
+					onQRUpdated(qr) {
+						r(qr);
+					},
+				});
+			});
 
-      if (qr) {
-        return c.render(`
+			if (qr) {
+				return c.render(`
             <div id="qrcode"></div>
 
             <script type="text/javascript">
@@ -93,24 +93,24 @@ export const createSessionController = () => {
                 document.body.appendChild(image)
             </script>
             `);
-      }
+			}
 
-      return c.json({
-        data: {
-          message: "Connected",
-        },
-      });
-    }
-  );
+			return c.json({
+				data: {
+					message: "Connected",
+				},
+			});
+		}
+	);
 
-  app.all("/logout", createKeyMiddleware(), async (c) => {
-    await whatsapp.deleteSession(
-      c.req.query().session || (await c.req.json()).session || ""
-    );
-    return c.json({
-      data: "success",
-    });
-  });
+	app.all("/logout", createKeyMiddleware(), async (c) => {
+		await whatsapp.deleteSession(
+			c.req.query().session || (await c.req.json()).session || ""
+		);
+		return c.json({
+			data: "success",
+		});
+	});
 
-  return app;
+	return app;
 };
