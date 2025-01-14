@@ -44,7 +44,14 @@ async function ensurePortAvailable(port) {
 // Initialize the WhatsApp client
 const client          = new Client({
                                        authStrategy: new LocalAuth(),
+                                       puppeteer   : {
+                                           headless: true, // Set to false if you want to debug visually
+                                           args    : [
+                                               '--no-sandbox',
+                                               '--disable-setuid-sandbox',
 
+                                           ]
+                                       }
                                    });
 let qrCode            = null;
 let isAuthenticated   = false;
