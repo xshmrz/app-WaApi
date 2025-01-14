@@ -44,19 +44,7 @@ async function ensurePortAvailable(port) {
 // Initialize the WhatsApp client
 const client          = new Client({
                                        authStrategy: new LocalAuth(),
-                                       puppeteer   : {
-                                           headless: true, // Set to false if you want to debug visually
-                                           args    : [
-                                               '--no-sandbox',
-                                               '--disable-setuid-sandbox',
-                                               '--disable-dev-shm-usage',
-                                               '--disable-accelerated-2d-canvas',
-                                               '--no-first-run',
-                                               '--no-zygote',
-                                               '--single-process', // Recommended for some environments
-                                               '--disable-gpu'
-                                           ]
-                                       }
+
                                    });
 let qrCode            = null;
 let isAuthenticated   = false;
