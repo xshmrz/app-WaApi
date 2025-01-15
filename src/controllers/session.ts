@@ -12,56 +12,52 @@ export const createSessionController = () => {
 
 	// Endpoint to list all sessions
 	app.get("/", createKeyMiddleware(), async (c) => {
-		return c.json({
-			data: whatsapp.getAllSession(), // Return all existing sessions
-		});
+		const sessions = whatsapp.getAllSession();
+		return c.json({data: sessions}); // Return all existing sessions
 	});
 
 	// Schema definition for starting a session
 	const startSessionSchema = z.object({
-		session: z.string(), // "session" field is required and must be a string
+		session: z.string().min(1, "Session name is required"), // "session" field is required and must be a non-empty string
 	});
+
+	// Function to handle session start logic
+	// @ts-ignore
+	const startSession = async (session) => {
+		return new Promise<string | null>(async (resolve, reject) => {
+			try {
+
+				await whatsapp.startSession(session, {
+					// @ts-ignore
+					timeout    : 0, // Disable timeout
+					onConnected: () => resolve(null), // Resolve with null when connected
+					onQRUpdated: (qr) => resolve(qr), // Resolve with QR code when updated
+				});
+			} catch (error) {
+				reject(error);
+			}
+		});
+	};
 
 	// Endpoint to start a new session (POST)
 	app.post(
 		"/start",
-		createKeyMiddleware(), // Key validation middleware
+		createKeyMiddleware(),
 		customValidator("json", startSessionSchema), // Validate incoming JSON data against the schema
 		async (c) => {
 			const payload = c.req.valid("json"); // Get validated JSON data
 
 			// Check if the session already exists
-			const isExist = whatsapp.getSession(payload.session);
-			if (isExist) {
-				throw new HTTPException(400, {
-					message: "Session already exist", // Throw error if session exists
-				});
+			if (whatsapp.getSession(payload.session)) {
+				throw new HTTPException(400, {message: "Session already exists"}); // Throw error if session exists
 			}
 
-			// Generate a QR code or get connection status
-			const qr = await new Promise<string | null>(async (resolve) => {
-				await whatsapp.startSession(payload.session, {
-					onConnected() {
-						resolve(null); // Return null when connected
-					},
-					onQRUpdated(qr) {
-						resolve(qr); // Return QR code when updated
-					},
-				});
-			});
+			// Start session and get QR code if available
+			const qr = await startSession(payload.session);
 
-			// Return QR code if available
-			if (qr) {
-				return c.json({
-					qr: qr, // Return the QR code as JSON
-				});
-			}
-
-			// Return a connection success message
+			// Return QR code or connection success message
 			return c.json({
-				data: {
-					message: "Connected",
-				},
+				data: qr ? {qr} : {message: "Connected"},
 			});
 		}
 	);
@@ -69,62 +65,45 @@ export const createSessionController = () => {
 	// Endpoint to start a new session (GET, QR visualization)
 	app.get(
 		"/start",
-		createKeyMiddleware(), // Key validation middleware
+		createKeyMiddleware(),
 		customValidator("query", startSessionSchema), // Validate query parameters against the schema
 		async (c) => {
 			const payload = c.req.valid("query"); // Get validated query parameters
 
 			// Check if the session already exists
-			const isExist = whatsapp.getSession(payload.session);
-			if (isExist) {
-				throw new HTTPException(400, {
-					message: "Session already exist", // Throw error if session exists
-				});
+			if (whatsapp.getSession(payload.session)) {
+				throw new HTTPException(400, {message: "Session already exists"});
 			}
 
-			// Generate a QR code or get connection status
-			const qr = await new Promise<string | null>(async (resolve) => {
-				await whatsapp.startSession(payload.session, {
-					onConnected() {
-						resolve(null); // Return null when connected
-					},
-					onQRUpdated(qr) {
-						resolve(qr); // Return QR code when updated
-					},
-				});
-			});
+			// Start session and get QR code if available
+			const qr = await startSession(payload.session);
 
 			// Visualize the QR code as an HTML page if available
 			if (qr) {
-				return c.render(`
-					<div id="qrcode"></div>
-
-					<script type="text/javascript">
-						let qr = '${await toDataURL(qr)}'
-						let image = new Image()
-						image.src = qr
-						document.body.appendChild(image)
-					</script>
-				`);
+				const qrImage = await toDataURL(qr);
+				return c.html(`
+          <div id="qrcode">
+            <img src="${qrImage}" alt="QR Code" />
+          </div>
+        `);
 			}
 
 			// Return a connection success message
 			return c.json({
-				data: {
-					message: "Connected",
-				},
+				data: {message: "Connected"},
 			});
 		}
 	);
 
 	// Endpoint to log out a session
 	app.all("/logout", createKeyMiddleware(), async (c) => {
-		await whatsapp.deleteSession(
-			c.req.query().session || (await c.req.json()).session || "" // Get session name from query or body
-		);
-		return c.json({
-			data: "success", // Return success message
-		});
+		const session = c.req.query("session") || (await c.req.json()).session || "";
+		if (!session) {
+			throw new HTTPException(400, {message: "Session name is required"});
+		}
+
+		await whatsapp.deleteSession(session); // Delete the specified session
+		return c.json({data: "Session successfully logged out"});
 	});
 
 	return app; // Return the application
