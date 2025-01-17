@@ -10,9 +10,9 @@ export const createMessageController = () => {
 
 	// Schema for validating message payload
 	const sendMessageSchema = z.object({
-		session: z.string(),
-		to     : z.string(),
-		message: z.string(),
+		sessionId  : z.string(),
+		recipient  : z.string(),
+		messageText: z.string(),
 	});
 
 	// Route to send a text message (POST method)
@@ -22,19 +22,17 @@ export const createMessageController = () => {
 		customValidator("json", sendMessageSchema), // Middleware for schema validation
 		async (context) => {
 			const payload       = context.req.valid("json"); // Extract validated payload
-			const sessionExists = whatsapp.getSession(payload.session); // Check if the session exists
+			const sessionExists = whatsapp.getSession(payload.sessionId); // Check if the session exists
 			if (!sessionExists) {
 				throw new HTTPException(400, {
 					message: "Session does not exist",
 				});
 			}
 
-
 			const response = await whatsapp.sendTextMessage({
-				// @ts-ignore
-				session: payload.session,
-				to     : payload.to,
-				message: payload.message,
+				sessionId: payload.sessionId,
+				to       : payload.recipient,
+				text     : payload.messageText,
 			});
 
 			return context.json({data: response}); // Return the response as JSON
@@ -48,7 +46,7 @@ export const createMessageController = () => {
 		customValidator("query", sendMessageSchema),
 		async (context) => {
 			const payload       = context.req.valid("query");
-			const sessionExists = whatsapp.getSession(payload.session);
+			const sessionExists = whatsapp.getSession(payload.sessionId);
 			if (!sessionExists) {
 				throw new HTTPException(400, {
 					message: "Session does not exist",
@@ -56,10 +54,9 @@ export const createMessageController = () => {
 			}
 
 			const response = await whatsapp.sendTextMessage({
-				// @ts-ignore
-				session: payload.session,
-				to     : payload.to,
-				message: payload.message,
+				sessionId: payload.sessionId,
+				to       : payload.recipient,
+				text     : payload.messageText,
 			});
 
 			return context.json({data: response});
@@ -74,13 +71,13 @@ export const createMessageController = () => {
 			"json",
 			sendMessageSchema.merge(
 				z.object({
-					image: z.string(), // Additional field for image URL
+					imageUrl: z.string(), // Additional field for image URL
 				})
 			)
 		),
 		async (context) => {
 			const payload       = context.req.valid("json");
-			const sessionExists = whatsapp.getSession(payload.session);
+			const sessionExists = whatsapp.getSession(payload.sessionId);
 			if (!sessionExists) {
 				throw new HTTPException(400, {
 					message: "Session does not exist",
@@ -88,11 +85,10 @@ export const createMessageController = () => {
 			}
 
 			const response = await whatsapp.sendImage({
-				// @ts-ignore
-				session: payload.session,
-				to     : payload.to,
-				message: payload.message,
-				image  : payload.image,
+				sessionId: payload.sessionId,
+				to       : payload.recipient,
+				text     : payload.messageText,
+				media    : payload.imageUrl,
 			});
 
 			return context.json({data: response});
@@ -107,14 +103,14 @@ export const createMessageController = () => {
 			"json",
 			sendMessageSchema.merge(
 				z.object({
-					image   : z.string(), // Field for document URL
-					filename: z.string(), // Field for document name
+					documentUrl : z.string(), // Field for document URL
+					documentName: z.string(), // Field for document name
 				})
 			)
 		),
 		async (context) => {
 			const payload       = context.req.valid("json");
-			const sessionExists = whatsapp.getSession(payload.session);
+			const sessionExists = whatsapp.getSession(payload.sessionId);
 			if (!sessionExists) {
 				throw new HTTPException(400, {
 					message: "Session does not exist",
@@ -122,12 +118,11 @@ export const createMessageController = () => {
 			}
 
 			const response = await whatsapp.sendDocument({
-				// @ts-ignore
-				session : payload.session,
-				to      : payload.to,
-				message : payload.message,
-				media   : payload.image,
-				filename: payload.filename,
+				sessionId: payload.sessionId,
+				to       : payload.recipient,
+				text     : payload.messageText,
+				media    : payload.documentUrl,
+				filename : payload.documentName,
 			});
 
 			return context.json({data: response});
