@@ -31,9 +31,9 @@ export const createMessageController = () => {
 
 			const response = await whatsapp.sendTextMessage({
 				// @ts-ignore
-				session: payload.session,
-				to     : payload.to,
-				text   : payload.message,
+				sessionId: payload.session,
+				to       : payload.to,
+				text     : payload.message,
 			});
 
 			return context.json({data: response}); // Return the response as JSON
@@ -56,9 +56,9 @@ export const createMessageController = () => {
 
 			const response = await whatsapp.sendTextMessage({
 				// @ts-ignore
-				session: payload.session,
-				to     : payload.to,
-				text   : payload.message,
+				sessionId: payload.session,
+				to       : payload.to,
+				text     : payload.message,
 			});
 
 			return context.json({data: response});
@@ -89,10 +89,11 @@ export const createMessageController = () => {
 
 			const response = await whatsapp.sendImage({
 				// @ts-ignore
-				session: payload.session,
-				to     : payload.to,
-				text   : payload.message,
-				image  : payload.image,
+				sessionId: payload.session,
+				to       : payload.to,
+				text     : payload.message,
+				// @ts-ignore
+				image: payload.image,
 			});
 
 			return context.json({data: response});
@@ -123,9 +124,10 @@ export const createMessageController = () => {
 
 			const response = await whatsapp.sendDocument({
 				// @ts-ignore
-				session      : payload.session,
-				to           : payload.to,
-				text         : payload.message,
+				sessionId: payload.session,
+				to       : payload.to,
+				text     : payload.message,
+				// @ts-ignore
 				document     : payload.document,
 				document_name: payload.document_name,
 			});
