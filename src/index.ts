@@ -18,6 +18,14 @@ app.use(
 	})
 );
 app.use(cors());
+app.use('*', async (c, next) => {
+	// @ts-ignore
+	if (c.req.headers['x-forwarded-proto'] !== 'https') {
+		// @ts-ignore
+		return c.redirect(`https://${c.req.headers.host}${c.req.url}`, 301);
+	}
+	await next();
+});
 
 app.onError(globalErrorMiddleware);
 app.notFound(notFoundMiddleware);
