@@ -40,14 +40,13 @@ export const createMessageController = () => {
 		}
 	);
 
-	// Route to send a text message (GET method)
-	app.get(
-		"/send-text",
-		createKeyMiddleware(),
-		customValidator("query", sendMessageSchema),
+	app.post(
+		"/send-text-to-group",
+		createKeyMiddleware(), // Middleware for key validation
+		customValidator("json", sendMessageSchema), // Middleware for schema validation
 		async (context) => {
-			const payload       = context.req.valid("query");
-			const sessionExists = whatsapp.getSession(payload.session);
+			const payload       = context.req.valid("json"); // Extract validated payload
+			const sessionExists = whatsapp.getSession(payload.session); // Check if the session exists
 			if (!sessionExists) {
 				throw new HTTPException(400, {
 					message: "Session does not exist",
@@ -59,11 +58,13 @@ export const createMessageController = () => {
 				sessionId: payload.session,
 				to       : payload.to,
 				text     : payload.message,
+				isGroup  : true,
 			});
 
-			return context.json({data: response});
+			return context.json({data: response}); // Return the response as JSON
 		}
 	);
+
 
 	// Route to send an image message
 	app.post(
